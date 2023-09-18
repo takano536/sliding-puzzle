@@ -1,0 +1,9 @@
+*.out
+*.exe
+*.o
+*.pyc
+
+build/
+.ice-puzzle-venv/
+
+res/
