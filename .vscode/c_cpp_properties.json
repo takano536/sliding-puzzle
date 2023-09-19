@@ -10,10 +10,10 @@
                 "UNICODE",
                 "_UNICODE"
             ],
+            "compilerPath": "${env:LOCALAPPDATA}\\mingw64\\bin\\gcc.exe",
             "windowsSdkVersion": "8.1",
-            "compilerPath": "${env:USERPROFILE}\\AppData\\Local\\mingw64\\bin\\gcc.exe",
-            "cStandard": "gnu11",
-            "cppStandard": "gnu++20",
+            "cStandard": "c11",
+            "cppStandard": "c++20",
             "intelliSenseMode": "windows-gcc-x64"
         },
         {

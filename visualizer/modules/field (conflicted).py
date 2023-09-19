@@ -13,16 +13,24 @@ class Field:
         pygame.K_RIGHT: (0, 1),
         pygame.K_LEFT: (0, -1),
     }
+    DIRECTION_CHARS = {
+        pygame.K_UP: 'U',
+        pygame.K_DOWN: 'D',
+        pygame.K_RIGHT: 'R',
+        pygame.K_LEFT: 'L',
+    }
 
-    def __init__(self, field: list, tile_size: tuple, block_colors: list, surface: pygame.Surface, drawing_top_left: tuple, block_gap: int, corner_radius: int, moving_speed: int = 1):
+    def __init__(self, field: list, block_types: list, goal: dict, tile_size: tuple, block_colors: list, surface: pygame.Surface, drawing_top_left: tuple, block_gap: int, corner_radius: int, moving_speed: int = 1):
         self.__init_field = copy.deepcopy(field)
         self.__field = field
+        self.__goal_block = list(goal.keys())[0]
+        self.__goal_coords = list(goal.values())[0]
 
         self.__block_num = max([max(idxs) for idxs in field]) + 1
         self.__blocks = [modules.block.Block() for _ in range(self.__block_num)]
 
         self.__tile_size = tile_size
-        self.__gap = block_gap
+        self.__gap = int(block_gap * tile_size[0] / 32)
         self.__radius = corner_radius
         self.__bg_color = block_colors[-1]
 
@@ -33,12 +41,86 @@ class Field:
         self.__is_moving = False
         self.__moving_direction = [None, None]
         self.__moving_block_idx = None
-        self.__speed = moving_speed
+        self.__speed = moving_speed * tile_size[0] / 32
 
         for i in range(self.__block_num):
             self.__blocks[i].color = block_colors[i]
+            self.__blocks[i].shape = block_types[i]
 
         self.reset(surface)
+        step, process = self.solve()
+        logging.debug(f'step: {step}')
+        logging.debug(f'process: {process}')
+        self.reset(surface)
+
+    def solve(self):
+        import collections
+
+        que = collections.deque()
+        que.append((copy.deepcopy(self.__field), 0, ''))
+        is_saw = set()
+        is_saw.add(''.join([''.join(['x' if i == -1 else str(self.__blocks[i].shape) for i in row]) for row in self.__field]))
+        logging.debug(f'{"".join(["".join(["x" if i == -1 else str(self.__blocks[i].shape) for i in row]) for row in self.__field])}')
+
+        while len(que) > 0:
+            board, step, process = que.popleft()
+            logging.debug('board')
+            [logging.debug(row) for row in board]
+            logging.debug(f'step: {step}')
+            logging.debug(f'process: {process}')
+
+            spaces = []
+            for i in range(len(board)):
+                for j in range(len(board[i])):
+                    if board[i][j] == -1:
+                        spaces.append((i, j))
+
+            search_block_idxs = []
+            for space in spaces:
+                for value in self.DIRECTIONS.values():
+                    if space[0] + value[0] < 0 or space[0] + value[0] >= len(board):
+                        continue
+                    if space[1] + value[1] < 0 or space[1] + value[1] >= len(board[0]):
+                        continue
+                    if board[space[0] + value[0]][space[1] + value[1]] == -1:
+                        continue
+                    if board[space[0] + value[0]][space[1] + value[1]] in search_block_idxs:
+                        continue
+                    search_block_idxs.append(board[space[0] + value[0]][space[1] + value[1]])
+
+            for block_idx in search_block_idxs:
+                for dir, is_movable in self.__is_movable(block_idx, board).items():
+                    if not is_movable:
+                        continue
+                    next_board = copy.deepcopy(board)
+                    block = self.__blocks[block_idx]
+                    for coord in block.coords:
+                        next_board[coord[0]][coord[1]] = -1
+                    for coord in block.coords:
+                        next_board[coord[0] + self.DIRECTIONS[dir][0]][coord[1] + self.DIRECTIONS[dir][1]] = block_idx
+
+                    next_board_str = ''.join([''.join(['x' if i == -1 else str(self.__blocks[i].shape) for i in row]) for row in next_board])
+                    if next_board_str in is_saw:
+                        continue
+                    is_saw.add(next_board_str)
+                    que.append((next_board, step + 1, process + f'{block_idx}{self.DIRECTION_CHARS[dir]}'))
+
+                    is_goal = True
+                    for goal_coord in self.__goal_coords:
+                        if next_board[goal_coord[0]][goal_coord[1]] != self.__goal_block:
+                            is_goal = False
+                    if is_goal:
+                        return (step + 1, process + f'{block_idx}{self.DIRECTION_CHARS[dir]}')
+
+                    if logging.root.level == logging.DEBUG and next_board_str.count('x') != 2:
+                        logging.debug(f'{next_board_str}')
+                        logging.debug('board')
+                        [logging.debug(row) for row in next_board]
+                        logging.debug(f'process: {process + f"{block_idx}{self.DIRECTION_CHARS[dir]}"}')
+                        quit()
+
+            logging.debug(f'queue size: {len(que)}')
+        return (None, None)
 
     def reset(self, surface: pygame.Surface, dirty_rects: list = []):
         logging.debug('field is reset.')
@@ -57,7 +139,7 @@ class Field:
                 if block_idx == -1:
                     continue
 
-                self.__blocks[block_idx].field_idxs.append((i, j))
+                self.__blocks[block_idx].coords.append((i, j))
 
                 is_connected = self.__is_connected((i, j))
                 rect = self.__get_rect((i, j), is_connected)
@@ -126,8 +208,8 @@ class Field:
         dirty_rects.append(rect)
         pygame.draw.rect(surface, block.color, rect, border_radius=self.__radius)
 
-    def __get_rect(self, field_idx: tuple, is_connected: dict) -> pygame.Rect:
-        i, j = field_idx
+    def __get_rect(self, coord: tuple, is_connected: dict) -> pygame.Rect:
+        i, j = coord
         top = self.__top_left[1] + i * self.__tile_size[1] + (0 if is_connected[pygame.K_UP] else self.__gap)
         left = self.__top_left[0] + j * self.__tile_size[0] + (0 if is_connected[pygame.K_LEFT] else self.__gap)
         width = self.__tile_size[0] - (0 if is_connected[pygame.K_LEFT] else self.__gap) - (0 if is_connected[pygame.K_RIGHT] else self.__gap)
@@ -139,40 +221,40 @@ class Field:
         block = self.__blocks[block_idx]
 
         if logging.root.level == logging.DEBUG:
-            [logging.debug(f'block {block_idx} [{field_idx}] is swapped to {self.DIRECTIONS[key]}.') for field_idx in block.field_idxs]
+            [logging.debug(f'block {block_idx} [{coord}] is swapped to {self.DIRECTIONS[key]}.') for coord in block.coords]
 
-        is_swapped = [False] * len(block.field_idxs)
+        is_swapped = [False] * len(block.coords)
         i = 0
         while not all(is_swapped):
             if is_swapped[i]:
-                i = (i + 1) % len(block.field_idxs)
+                i = (i + 1) % len(block.coords)
                 continue
 
-            block_field_idx = block.field_idxs[i]
-            space_field_idx = (
-                block_field_idx[0] + self.DIRECTIONS[key][0],
-                block_field_idx[1] + self.DIRECTIONS[key][1]
+            block_coord = block.coords[i]
+            space_coord = (
+                block_coord[0] + self.DIRECTIONS[key][0],
+                block_coord[1] + self.DIRECTIONS[key][1]
             )
-            if space_field_idx in block.field_idxs:
-                i = (i + 1) % len(block.field_idxs)
+            if space_coord in block.coords:
+                i = (i + 1) % len(block.coords)
                 continue
 
-            logging.debug(f'block {block_idx} [{block_field_idx}] is swapped to {space_field_idx}.')
-            self.__field[space_field_idx[0]][space_field_idx[1]] = block_idx
-            self.__field[block_field_idx[0]][block_field_idx[1]] = -1
+            logging.debug(f'block {block_idx} [{block_coord}] is swapped to {space_coord}.')
+            self.__field[space_coord[0]][space_coord[1]] = block_idx
+            self.__field[block_coord[0]][block_coord[1]] = -1
 
-            block.field_idxs.remove(block_field_idx)
-            block.field_idxs.insert(i, space_field_idx)
+            block.coords.remove(block_coord)
+            block.coords.insert(i, space_coord)
             is_swapped[i] = True
 
-        for field_idx in block.field_idxs:
-            is_connected = self.__is_connected(field_idx)
-            rect = self.__get_rect(field_idx, is_connected)
+        for coord in block.coords:
+            is_connected = self.__is_connected(coord)
+            rect = self.__get_rect(coord, is_connected)
             if not is_connected[pygame.K_UP] and not is_connected[pygame.K_LEFT]:
                 self.__blocks[block_idx].next_top_left = [rect.top, rect.left]
             if not is_connected[pygame.K_DOWN] and not is_connected[pygame.K_RIGHT]:
                 self.__blocks[block_idx].next_bottom_right = [rect.top + rect.height, rect.left + rect.width]
-            logging.debug(f'block {block_idx} [{field_idx}] will be moved to {self.__blocks[block_idx].next_top_left}.')
+            logging.debug(f'block {block_idx} [{coord}] will be moved to {self.__blocks[block_idx].next_top_left}.')
 
         self.__is_moving = True
         self.__moving_block_idx = block_idx
@@ -188,43 +270,52 @@ class Field:
                 continue
             return i
 
-    def __is_connected(self, field_idx: tuple) -> dict:
+    def __is_connected(self, coord: tuple, field: list = None) -> dict:
+        if field is None:
+            field = self.__field
         is_connected = dict()
         for key, value in self.DIRECTIONS.items():
-            i, j = field_idx
+            i, j = coord
             is_connected[key] = False
-            if self.__field[i][j] == -1:
+            if field[i][j] == -1:
                 continue
             next_i = i + value[0]
             next_j = j + value[1]
-            if next_j < 0 or next_j >= len(self.__field[i]) or next_i < 0 or next_i >= len(self.__field):
+            if next_j < 0 or next_j >= len(field[i]) or next_i < 0 or next_i >= len(field):
                 continue
-            if self.__field[i][j] != self.__field[next_i][next_j]:
+            if field[i][j] != field[next_i][next_j]:
                 continue
             is_connected[key] = True
         return is_connected
 
-    def __is_movable(self, block_idx):
+    def __is_movable(self, block_idx, field: list = None):
+        if field is None:
+            field = self.__field
         is_movable = {pygame.K_UP: True, pygame.K_DOWN: True, pygame.K_RIGHT: True, pygame.K_LEFT: True}
         block = self.__blocks[block_idx]
-        is_connected = {field_idx: self.__is_connected(field_idx) for field_idx in block.field_idxs}
+        block_coords = list()
+        for i in range(len(field)):
+            for j in range(len(field[i])):
+                if field[i][j] == block_idx:
+                    block_coords.append((i, j))
+        is_connected = {coord: self.__is_connected(coord, field) for coord in block.coords}
 
-        for field_idx, is_connected in is_connected.items():
+        for coord, is_connected in is_connected.items():
             for key, value in is_movable.items():
 
                 if is_connected[key]:
                     continue
 
-                first = field_idx[0] + self.DIRECTIONS[key][0]
-                second = field_idx[1] + self.DIRECTIONS[key][1]
-                if first < 0 or first >= len(self.__field):
+                first = coord[0] + self.DIRECTIONS[key][0]
+                second = coord[1] + self.DIRECTIONS[key][1]
+                if first < 0 or first >= len(field):
                     is_movable[key] = False
                     continue
-                if second < 0 or second >= len(self.__field[0]):
+                if second < 0 or second >= len(field[0]):
                     is_movable[key] = False
                     continue
 
-                is_movable[key] = value and self.__field[first][second] == -1
+                is_movable[key] = value and field[first][second] == -1
 
         if logging.root.level == logging.DEBUG:
             [logging.debug(f'block {block_idx} is movable to {self.DIRECTIONS[key]}.') for key, value in is_movable.items() if value]
