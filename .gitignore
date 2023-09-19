@@ -4,6 +4,6 @@
 *.pyc
 
 build/
-.ice-puzzle-venv/
+.sliding-puzzle-venv/
 
 res/
