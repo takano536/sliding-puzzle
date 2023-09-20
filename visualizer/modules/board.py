@@ -58,7 +58,7 @@ class Board:
 
         self.reset(surface)
 
-    def play_answer(self, surface: pygame.Surface, dirty_rects: list):
+    def play_answer(self):
         if self.__curr_answer_step == -1:
             prev_board = copy.deepcopy(self.__board)
             self.__step, self.__process = self.__solve()

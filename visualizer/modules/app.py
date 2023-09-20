@@ -107,7 +107,7 @@ class App:
             if event.type == pygame.KEYDOWN and event.key == pygame.K_r:
                 self.__board.reset(self.__surface, self.__dirty_rects)
             if event.type == pygame.KEYDOWN and event.key == pygame.K_n:
-                self.__board.play_answer(self.__surface, self.__dirty_rects)
+                self.__board.play_answer()
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 self.__quit()
             if event.type == pygame.QUIT:
