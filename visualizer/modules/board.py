@@ -59,7 +59,6 @@ class Board:
             self.__blocks[i].shape = block_types[i]
 
         self.reset(surface)
-        self.__curr_answer_step = 0
 
     def play_answer(self):
         if self.__curr_answer_step == -1:
@@ -149,7 +148,7 @@ class Board:
 
     def reset(self, surface: pygame.Surface, dirty_rects: list = []):
         logging.debug('board is reset.')
-        self.__curr_answer_step = -1
+        self.__curr_answer_step = 0
         board_rect = pygame.Rect(self.__top_left[1], self.__top_left[0], self.__width, self.__height)
         dirty_rects.append(board_rect)
         pygame.draw.rect(surface, self.__bg_color, board_rect, border_radius=3)

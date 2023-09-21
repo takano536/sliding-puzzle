@@ -73,9 +73,9 @@ int main() {
     }
 
     config["output"] = zero_indexed_shuffled_board;
+    config["process"] = zero_indexed_process;
     config["states"] = states;
     config["steps"] = steps;
-    config["process"] = zero_indexed_process;
 
     std::ofstream ofs(CONFIG_FILEPATH);
     ofs << config.dump(4) << std::endl;

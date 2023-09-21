@@ -6,6 +6,7 @@
 #include <iostream>
 #include <memory>
 #include <queue>
+#include <ranges>
 #include <tuple>
 
 Solver::Solver(std::vector<std::vector<int>>& board, int width, int height, int goal_block_id, std::vector<std::pair<int, int>>& goal_coords, int block_num, std::vector<int>& block_types) {
