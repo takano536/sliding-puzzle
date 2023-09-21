@@ -4,6 +4,6 @@ set(CMAKE_CXX_FLAGS "-std=c++20 -Wall -Wextra -O2")
 add_executable(
     main 
     main.cpp
-    ./modules/Solver/Solver.cpp 
-    ./modules/Vec2/Vec2.cpp
+    ./modules/Solver/Solver.cpp
+    ./modules/Generator/Generator.cpp 
 )

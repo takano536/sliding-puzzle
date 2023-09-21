@@ -1,5 +1,6 @@
 {
     "files.associations": {
+        "*.m": "matlab",
         "atomic": "cpp",
         "string": "cpp",
         "array": "cpp",
@@ -62,7 +63,8 @@
         "ranges": "cpp",
         "span": "cpp",
         "valarray": "cpp",
-        "set": "cpp"
+        "set": "cpp",
+        "list": "cpp"
     },
     "[python]": {
         "editor.defaultFormatter": "ms-python.autopep8"

@@ -12,6 +12,7 @@ import modules.gradator
 class App:
 
     CONFIG_FILEPATH = str(Path(__file__).resolve().parents[1] / 'config' / 'config.json')
+    BOARD_FILEPATH = str(Path(__file__).resolve().parents[2] / 'config' / 'params.json')
 
     def __init__(self):
         # init pygame
@@ -22,6 +23,10 @@ class App:
         with open(self.CONFIG_FILEPATH, 'r') as f:
             text = f.read()
         config = json.loads(re.sub(r'/\*[\s\S]*?\*/|//.*', '', text))
+        with open(self.BOARD_FILEPATH, 'r') as f:
+            text = f.read()
+        board_info = json.loads(re.sub(r'/\*[\s\S]*?\*/|//.*', '', text))
+        
         self.__fps = config['fps']
         self.__tile_size = tuple(config['tile_size'].values())
         self.__padding = (int(self.__tile_size[0] / 2), int(self.__tile_size[1] / 2))
@@ -66,7 +71,9 @@ class App:
             border_radius=config['radius'],
         )
         self.__board = modules.board.Board(
-            config['board'],
+            board_info['output'],
+            board_info['process'],
+            board_info['steps'],
             config['block_types'],
             config['goal'],
             self.__tile_size,

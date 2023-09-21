@@ -26,7 +26,7 @@ class Board:
         'L': pygame.K_LEFT,
     }
 
-    def __init__(self, board: list, block_types: list, goal: dict, tile_size: tuple, block_colors: list, surface: pygame.Surface, drawing_top_left: tuple, block_gap: int, corner_radius: int, moving_speed: int = 1):
+    def __init__(self, board: list, process: str, steps: int, block_types: list, goal: dict, tile_size: tuple, block_colors: list, surface: pygame.Surface, drawing_top_left: tuple, block_gap: int, corner_radius: int, moving_speed: int = 1):
         self.__init_board = copy.deepcopy(board)
         self.__board = board
         self.__goal_block = int(list(goal.keys())[0])
@@ -49,14 +49,17 @@ class Board:
         self.__moving_block_idx = None
         self.__speed = moving_speed * tile_size[0] / 32
 
-        self.__step, self.__process = None, None
-        self.__curr_answer_step = -1
+        self.__process, self.__step = process, steps
+        
+        logging.debug(f'steps: {steps}')
+        logging.debug(f'process: {process}')
 
         for i in range(self.__block_num):
             self.__blocks[i].color = block_colors[i]
             self.__blocks[i].shape = block_types[i]
 
         self.reset(surface)
+        self.__curr_answer_step = 0
 
     def play_answer(self):
         if self.__curr_answer_step == -1:
@@ -64,6 +67,7 @@ class Board:
             self.__step, self.__process = self.__solve()
             self.__board = copy.deepcopy(prev_board)
             self.__curr_answer_step = 0
+            return
         if self.__step is None or self.__process is None:
             return
         if self.__curr_answer_step >= self.__step:
